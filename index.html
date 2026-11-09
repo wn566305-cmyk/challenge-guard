@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Challenge Guard</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E6B72">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Guard">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column, status first, then position size, logging, review. Numbers in mono. */
+:root{
+  --bg:#EDF0F3; --surface:#FFFFFF; --ink:#14202B; --muted:#5A6A79; --line:#D3DBE3;
+  --accent:#0E6B72; --accent-ink:#FFFFFF;
+  --good:#1B7F4B; --good-bg:#DDF1E6; --warn:#9A5B00; --warn-bg:#FBEBCB; --bad:#B3261E; --bad-bg:#F9DDDA; --info-bg:#D9ECEE;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1318; --surface:#151D25; --ink:#E6EDF3; --muted:#8C9BAA; --line:#26323D;
+  --accent:#4CC2C9; --accent-ink:#06161A;
+  --good:#4CC38A; --good-bg:#13301F; --warn:#E3A640; --warn-bg:#35280E; --bad:#F27D74; --bad-bg:#3A1816; --info-bg:#112F33; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1318; --surface:#151D25; --ink:#E6EDF3; --muted:#8C9BAA; --line:#26323D;
+  --accent:#4CC2C9; --accent-ink:#06161A;
+  --good:#4CC38A; --good-bg:#13301F; --warn:#E3A640; --warn-bg:#35280E; --bad:#F27D74; --bad-bg:#3A1816; --info-bg:#112F33; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+  padding-top:calc(env(safe-area-inset-top,0px) + 28px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 40px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:20px;font-weight:600;margin:0}
+h2{font-size:13px;font-weight:500;margin:0 0 10px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sub{font-size:13px;color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.status{border-radius:10px;padding:16px;border:1px solid transparent}
+.status.go{background:var(--good-bg);color:var(--good)}
+.status.halve{background:var(--warn-bg);color:var(--warn)}
+.status.stop{background:var(--bad-bg);color:var(--bad)}
+.status.win{background:var(--info-bg);color:var(--accent)}
+.status .big{font-size:24px;font-weight:600;line-height:1.2;margin:0 0 4px}
+.status p{margin:0;font-size:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:0}
+.card .stat{background:var(--bg);border-color:transparent}
+.stat .l{font-size:12px;color:var(--muted)}
+.stat .v{font-size:20px;font-weight:500}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+.meter{margin:0 0 14px}.meter:last-child{margin:0}
+.meter .row{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:5px;flex-wrap:wrap}
+.track{position:relative;height:10px;border-radius:5px;background:var(--line)}
+.fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--good)}
+.fill.warn{background:var(--warn)}.fill.bad{background:var(--bad)}
+.tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+.legend{font-size:12px;color:var(--muted);margin-top:4px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:3px}
+input,select,button{font:inherit;color:var(--ink)}
+input,select{width:100%;height:40px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:10px;margin-bottom:10px}
+.btns{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.btn{height:44px;border:1px solid var(--line);background:var(--surface);border-radius:8px;cursor:pointer;font-family:var(--mono);font-size:14px}
+.btn:hover{border-color:var(--ink)}
+.btn.l{color:var(--bad)}.btn.w{color:var(--good)}
+.row3{display:grid;grid-template-columns:110px auto;gap:10px;align-items:end}
+.primary{height:40px;border:0;border-radius:8px;background:var(--accent);color:var(--accent-ink);font-weight:500;cursor:pointer;padding:0 18px}
+.ghost{height:36px;border:1px solid var(--line);background:transparent;border-radius:8px;cursor:pointer;padding:0 12px;font-size:13px}
+.status .ghost{border-color:currentColor;color:inherit;margin-top:10px}
+.err{color:var(--bad);font-size:13px;min-height:18px;margin:6px 0 0}
+.tr{display:grid;grid-template-columns:44px minmax(0,1fr) auto 28px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.tr:first-child{border-top:0}
+.tag{font-size:11px;background:var(--bad-bg);color:var(--bad);border-radius:4px;padding:1px 6px;margin-left:6px}
+.note{display:block;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.x{width:28px;height:28px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:6px}
+.x:hover{color:var(--bad)}
+.empty{color:var(--muted);font-size:14px;margin:0}
+.chk{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:transparent;border:0;border-top:1px solid var(--line);padding:10px 0;cursor:pointer;font-size:14px}
+.chk:first-of-type{border-top:0}
+.box{flex:none;width:20px;height:20px;border:1.5px solid var(--muted);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;margin-top:1px}
+.chk[aria-pressed="true"] .box{background:var(--good);border-color:var(--good);color:var(--bg)}
+.chk[aria-pressed="true"] .t{color:var(--muted)}
+details summary{cursor:pointer;font-weight:500;font-size:14px}
+.sg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+svg{display:block;width:100%;height:auto}
+.axis{fill:var(--muted);font-family:var(--mono);font-size:9px}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:6px 0}
+.bar>i{display:block;height:100%;background:var(--accent)}
+.warnbox{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:13px;margin:0 0 10px}
+@media (max-width:380px){.btns{grid-template-columns:repeat(3,minmax(0,1fr))}.row2{grid-template-columns:1fr}.row3{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Challenge Guard</h1>
+    <span class="sub mono" id="day"></span>
+  </div>
+
+  <div id="status" class="status" aria-live="polite"></div>
+  <div class="grid2" id="stats"></div>
+
+  <div class="card">
+    <h2>Limits</h2>
+    <div id="meters"></div>
+  </div>
+
+  <div class="card">
+    <h2>Position size</h2>
+    <div class="row2">
+      <div><label for="ins">Instrument</label>
+        <select id="ins">
+          <optgroup label="Gold"><option value="XAUUSD">XAUUSD (gold)</option></optgroup>
+          <optgroup label="Indices"><option value="GER40">GER40</option><option value="NAS100">NAS100</option><option value="US30">US30</option></optgroup>
+          <optgroup label="USD pairs"><option value="EURUSD">EURUSD</option><option value="GBPUSD">GBPUSD</option><option value="AUDUSD">AUDUSD</option><option value="NZDUSD">NZDUSD</option><option value="USDJPY">USDJPY</option><option value="USDCAD">USDCAD</option><option value="USDCHF">USDCHF</option></optgroup>
+        </select></div>
+      <div><label for="stop" id="stoplbl">Stop distance</label><input id="stop" inputmode="decimal"></div>
+    </div>
+    <div id="calc"></div>
+    <details style="margin-top:12px"><summary>Contract spec for this instrument</summary>
+      <div style="margin-top:10px"><label for="val" id="vlbl">Value per 1.00 lot</label><input id="val" inputmode="decimal"></div>
+      <p class="legend" id="vnote"></p>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Log a trade</h2>
+    <div class="row2">
+      <div><label for="note">Note</label><input id="note" placeholder="Setup, mistake, mood" maxlength="140" autocomplete="off"></div>
+      <div><label for="side">Side</label><select id="side"><option>Buy</option><option>Sell</option></select></div>
+    </div>
+    <label>Result in R (1R = your risk per trade) for <span id="logins" class="mono"></span></label>
+    <div class="btns">
+      <button class="btn l" data-r="-1">-1R</button>
+      <button class="btn" data-r="0">BE</button>
+      <button class="btn w" data-r="1">+1R</button>
+      <button class="btn w" data-r="2">+2R</button>
+      <button class="btn w" data-r="3">+3R</button>
+    </div>
+    <div class="row3">
+      <div><label for="cr">Custom R</label><input id="cr" inputmode="decimal" placeholder="-0.4"></div>
+      <div><button class="primary" id="logc">Log custom</button></div>
+    </div>
+    <p class="err" id="err" role="alert"></p>
+  </div>
+
+  <div class="card">
+    <h2>Recent trades</h2>
+    <div id="list"></div>
+  </div>
+
+  <div class="card">
+    <h2 id="progh">Progress to target</h2>
+    <div id="curve"></div>
+  </div>
+
+  <div class="card">
+    <h2>Before you trade today</h2>
+    <div id="checks"></div>
+  </div>
+
+  <details class="card" id="settings">
+    <summary>Plan settings</summary>
+    <div class="sg">
+      <div><label for="s-acct">Account size ($)</label><input id="s-acct" inputmode="decimal"></div>
+      <div><label for="s-risk">Risk per trade (%)</label><input id="s-risk" inputmode="decimal"></div>
+      <div><label for="s-t1">Phase 1 target (%)</label><input id="s-t1" inputmode="decimal"></div>
+      <div><label for="s-t2">Phase 2 target (%)</label><input id="s-t2" inputmode="decimal"></div>
+      <div><label for="s-phase">Current phase</label><select id="s-phase"><option value="1">Phase 1</option><option value="2">Phase 2</option><option value="3">Funded</option></select></div>
+      <div><label for="s-days">Days in this phase</label><input id="s-days" inputmode="numeric"></div>
+      <div><label for="s-fd">Firm daily loss limit (%)</label><input id="s-fd" inputmode="decimal"></div>
+      <div><label for="s-fm">Firm max drawdown (%)</label><input id="s-fm" inputmode="decimal"></div>
+      <div><label for="s-start">Phase start date</label><input id="s-start" type="date"></div>
+      <div style="display:flex;align-items:end"><button class="ghost" id="reset" style="width:100%">Clear all trades</button></div>
+    </div>
+    <p class="legend">Each phase starts from a fresh account, so progress and drawdown count from the phase start. Your own stops are 2% a day and 5% overall. Check whether the firm's drawdown is static, trailing or equity based before day one.</p>
+  </details>
+
+  <p class="sub" id="sync" style="margin:0"></p>
+</div>
+
+<script>
+(function(){
+var KEY='challenge-guard-v1';
+var RULES=['Stop loss set before entry, never moved further away','Minimum 1:2 reward to risk, max 3 trades a day','No revenge trades, martingale or adding to losers','Max 2 trades open at once, correlated pairs count as one','Flat before high-impact news and before the weekend','Never size up to rush the target','Firm drawdown type checked (static, trailing or equity)','Daily stop is 2%. Two losses in a row ends the day'];
+var INS={
+ XAUUSD:{u:'$ move',us:'$1 move',v:100,stop:5,note:'Most brokers use 100 oz per lot, so a $1 move is $100 per lot.'},
+ GER40:{u:'points',us:'point',v:1,stop:30,note:'Usually 1 EUR per point per lot, so risk in USD is slightly higher. Check your broker.'},
+ NAS100:{u:'points',us:'point',v:1,stop:60,note:'Often $1 per point per lot, but some brokers use $10 or $20. Check your broker.'},
+ US30:{u:'points',us:'point',v:1,stop:100,note:'Often $1 per point per lot, but some brokers use $10. Check your broker.'},
+ EURUSD:{u:'pips',us:'pip',v:10,stop:15,note:'USD is the quote currency, so a pip is $10 per lot.'},
+ GBPUSD:{u:'pips',us:'pip',v:10,stop:15,note:'USD is the quote currency, so a pip is $10 per lot.'},
+ AUDUSD:{u:'pips',us:'pip',v:10,stop:15,note:'USD is the quote currency, so a pip is $10 per lot.'},
+ NZDUSD:{u:'pips',us:'pip',v:10,stop:15,note:'USD is the quote currency, so a pip is $10 per lot.'},
+ USDJPY:{u:'pips',us:'pip',v:6.7,stop:15,note:'Pip value moves with the price (about 1000 JPY divided by the rate). Update it from your platform.'},
+ USDCAD:{u:'pips',us:'pip',v:7.3,stop:15,note:'USD is the base currency, so pip value moves with the rate. Update it from your platform.'},
+ USDCHF:{u:'pips',us:'pip',v:12.5,stop:15,note:'USD is the base currency, so pip value moves with the rate. Update it from your platform.'}
+};
+var DAY_STOP=2,DD_STOP=5,BANK=2,HALVE=1,MAX_TRADES=3,PH=['','Phase 1','Phase 2','Funded'];
+function p2(n){return n<10?'0'+n:''+n}
+function today(){var d=new Date();return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())}
+function fresh(){return{acct:10000,risk:0.5,t1:10,t2:5,phase:1,phaseFrom:0,days:30,start:today(),firmDaily:5,firmDD:10,trades:[],checks:{day:'',done:[]},spec:{},ins:'XAUUSD',updated:0}}
+function norm(d){if(d.t1===undefined&&d.target)d.t1=d.target;var f=fresh();for(var k in f){if(d[k]===undefined||d[k]===null)d[k]=f[k]}if(!INS[d.ins])d.ins='XAUUSD';return d}
+function loadLocal(){try{var s=localStorage.getItem(KEY);if(s)return norm(JSON.parse(s))}catch(e){}return null}
+var S=loadLocal()||fresh();
+var doc=null,syncMode='device',writing=false,dirty=false,timer=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function sum(a){var t=0;for(var i=0;i<a.length;i++)t+=a[i].pnl;return t}
+function pct(n){return(n>0?'+':n<0?'-':'')+Math.abs(n).toFixed(2)+'%'}
+function usd(n){return '$'+Math.round(n).toLocaleString()}
+function usd2(n){return '$'+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+function cls(n){return n>0?'pos':n<0?'neg':''}
+function tgt(){return S.phase===1?S.t1:S.phase===2?S.t2:null}
+function phaseTrades(){return S.trades.slice(S.phaseFrom)}
+function dayDiff(a,b){var x=a.split('-'),y=b.split('-');return Math.round((new Date(+y[0],y[1]-1,+y[2])-new Date(+x[0],x[1]-1,+x[2]))/86400000)}
+function spec(k){var d=INS[k],o=S.spec[k]||{};return{v:o.v!==undefined?o.v:d.v,stop:o.stop!==undefined?o.stop:d.stop}}
+
+function calc(){
+  var td=today(),tt=S.trades.filter(function(t){return t.day===td});
+  var day=sum(tt),total=sum(phaseTrades()),tg=tgt(),streak=0;
+  for(var i=tt.length-1;i>=0;i--){if(tt[i].r<0)streak++;else break}
+  var riskUsd=S.acct*S.risk/100,st;
+  if(tg!==null&&total>=tg)st={c:'win',t:'Target hit',l:tg+'% reached. Stop trading and request the next phase.',size:0,next:true};
+  else if(total<=-DD_STOP)st={c:'stop',t:'Pause and review',l:'Down '+DD_STOP+'% overall. Pause for a week and go through your journal.',size:0};
+  else if(day<=-DAY_STOP)st={c:'stop',t:'Done for today',l:'Down '+DAY_STOP+'% on the day. Close the platform.',size:0};
+  else if(streak>=2)st={c:'stop',t:'Done for today',l:'Two losses in a row. Close the platform.',size:0};
+  else if(tt.length>=MAX_TRADES)st={c:'stop',t:'Done for today',l:'That is '+MAX_TRADES+' trades. Close the platform.',size:0};
+  else if(day>=BANK)st={c:'win',t:'Bank it',l:'Up '+BANK+'% on the day. Stop here and keep the gain.',size:0};
+  else if(day<=-HALVE)st={c:'halve',t:'Half size',l:'Down '+HALVE+'% on the day. Risk '+usd(riskUsd/2)+' per trade, max open risk '+usd(S.acct*0.005)+'.',size:0.5};
+  else st={c:'go',t:'Clear to trade',l:'Risk '+usd(riskUsd)+' per trade, max open risk '+usd(S.acct*0.01)+'. '+(MAX_TRADES-tt.length)+' of '+MAX_TRADES+' trades left today.',size:1};
+  return{tt:tt,day:day,total:total,tg:tg,streak:streak,st:st,riskUsd:riskUsd};
+}
+
+function renderStatus(c){
+  var el=$('status');el.className='status '+(c.st.c==='go'?'go':c.st.c);
+  var btn=c.st.next&&S.phase<3?'<button class="ghost" data-next="1">Start '+PH[S.phase+1].toLowerCase()+' on a fresh account</button>':'';
+  el.innerHTML='<p class="big">'+esc(c.st.t)+'</p><p>'+esc(c.st.l)+'</p>'+btn;
+  $('stats').innerHTML=
+    '<div class="stat"><div class="l">Today</div><div class="v mono '+cls(c.day)+'">'+pct(c.day)+'</div></div>'+
+    '<div class="stat"><div class="l">'+PH[S.phase]+' overall</div><div class="v mono '+cls(c.total)+'">'+pct(c.total)+'</div></div>'+
+    '<div class="stat"><div class="l">Trades today</div><div class="v mono">'+c.tt.length+' / '+MAX_TRADES+'</div></div>'+
+    '<div class="stat"><div class="l">Losses in a row</div><div class="v mono '+(c.streak?'neg':'')+'">'+c.streak+' / 2</div></div>';
+  var n=Math.max(1,dayDiff(S.start,today())+1);
+  $('day').textContent=PH[S.phase]+' · Day '+n+(S.phase<3?' of '+S.days:'');
+}
+
+function meter(label,val,pl,fl){
+  var loss=Math.max(0,-val),w=Math.min(100,loss/fl*100),k=loss>=pl?'bad':loss>=pl*0.5?'warn':'';
+  var tick=Math.min(100,pl/fl*100);
+  return '<div class="meter"><div class="row"><span>'+label+'</span><span class="mono '+cls(val)+'">'+pct(val)+'</span></div>'+
+   '<div class="track"><div class="fill '+k+'" style="width:'+w.toFixed(1)+'%"></div><div class="tick" style="left:calc('+tick.toFixed(1)+'% - 1px)"></div></div>'+
+   '<div class="legend mono">Your stop -'+pl+'% (marker) · firm limit -'+fl+'% (end of bar)</div></div>';
+}
+function renderMeters(c){
+  $('meters').innerHTML=meter('Daily loss',c.day,DAY_STOP,S.firmDaily)+meter('Overall drawdown',c.total,DD_STOP,S.firmDD);
+}
+
+function renderCalc(c){
+  var k=S.ins,d=INS[k],s=spec(k),size=c.st.size||1;
+  var risk=S.acct*S.risk/100*size,perLot=s.stop*s.v,lots=Math.floor(risk/perLot*100+1e-9)/100,h='';
+  if(c.st.size===0)h+='<p class="warnbox">Planning only. The plan says no new trades right now.</p>';
+  if(!(perLot>0)){$('calc').innerHTML='<p class="empty">Enter a stop distance above zero.</p>';return}
+  if(lots<0.01){
+    var min=0.01*perLot;
+    h+='<p class="warnbox">Even 0.01 lot risks '+usd2(min)+' ('+(min/S.acct*100).toFixed(2)+'%), more than your '+usd2(risk)+'. Use a tighter stop or skip this setup.</p>';
+  }else{
+    var real=lots*perLot;
+    h+='<div class="grid2"><div class="stat"><div class="l">Lot size</div><div class="v mono">'+lots.toFixed(2)+'</div></div>'+
+       '<div class="stat"><div class="l">Risk if stopped</div><div class="v mono">'+usd2(real)+'</div></div>'+
+       '<div class="stat"><div class="l">Take profit at 1:2</div><div class="v mono">'+(s.stop*2).toLocaleString(undefined,{maximumFractionDigits:2})+' '+d.u+'</div></div>'+
+       '<div class="stat"><div class="l">Reward at 1:2</div><div class="v mono pos">'+usd2(real*2)+'</div></div></div>'+
+       '<p class="legend mono">'+(real/S.acct*100).toFixed(2)+'% of account'+(size===0.5?' (half size)':'')+'. A second trade at the same risk reaches your '+usd(S.acct*0.01)+' open risk cap.</p>';
+  }
+  $('calc').innerHTML=h;
+}
+function fillCalc(){
+  var k=S.ins,d=INS[k],s=spec(k);
+  $('ins').value=k;$('stop').value=s.stop;$('val').value=s.v;
+  $('stoplbl').textContent='Stop distance ('+d.u+')';
+  $('vlbl').textContent='Account-currency value of one '+d.us+' per 1.00 lot';
+  $('vnote').textContent=d.note;$('logins').textContent=k;
+}
+
+function renderList(){
+  var el=$('list');
+  if(!S.trades.length){el.innerHTML='<p class="empty">No trades yet. Log each trade as its result in R, and the plan above updates after every entry.</p>';return}
+  var rows=S.trades.slice(-15).reverse();
+  el.innerHTML=rows.map(function(t){
+    return '<div class="tr"><span class="sub mono">'+esc(t.day.slice(5))+'</span><span>'+esc(t.pair)+' '+esc(t.side)+(t.broke?'<span class="tag">off plan</span>':'')+(t.size===0.5?'<span class="sub"> half</span>':'')+(t.note?'<span class="note">'+esc(t.note)+'</span>':'')+'</span><span class="mono '+cls(t.pnl)+'">'+(t.r>0?'+':'')+t.r+'R · '+pct(t.pnl)+'</span><button class="x" data-del="'+esc(t.id)+'" aria-label="Delete trade">&times;</button></div>';
+  }).join('');
+}
+
+function renderCurve(c){
+  var tg=c.tg;
+  $('progh').textContent=tg===null?'Funded account':PH[S.phase]+' progress to '+tg+'%';
+  var pts=[0],run=0;phaseTrades().forEach(function(t){run+=t.pnl;pts.push(run)});
+  var lo=Math.min(-DD_STOP-1,Math.min.apply(null,pts)-0.5),hi=Math.max((tg===null?3:tg)+1,Math.max.apply(null,pts)+0.5);
+  var W=320,H=150,L=34,R=8,T=8,B=14,n=Math.max(pts.length-1,1);
+  function X(i){return L+(W-L-R)*(i/n)}
+  function Y(v){return T+(H-T-B)*(1-(v-lo)/(hi-lo))}
+  var lines=[[0,'var(--muted)','']];
+  if(tg!==null)lines.push([tg,'var(--good)','4 3']);
+  lines.push([-DD_STOP,'var(--bad)','4 3']);
+  var g='';
+  lines.forEach(function(l){
+    g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(l[0]).toFixed(1)+'" y2="'+Y(l[0]).toFixed(1)+'" stroke="'+l[1]+'" stroke-width="1" '+(l[2]?'stroke-dasharray="'+l[2]+'"':'opacity=".5"')+'/>'+
+       '<text class="axis" x="'+(L-4)+'" y="'+(Y(l[0])+3).toFixed(1)+'" text-anchor="end">'+(l[0]>0?'+':'')+l[0]+'%</text>';
+  });
+  var d=pts.map(function(v,i){return(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)}).join(' ');
+  var lx=X(pts.length-1),ly=Y(pts[pts.length-1]);
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Equity curve in percent of account against target and drawdown lines">'+g+
+    (pts.length>1?'<path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>':'')+
+    '<circle cx="'+lx.toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="3.5" fill="var(--accent)"/></svg>';
+  var out=svg;
+  if(tg!==null){
+    var prog=Math.max(0,Math.min(100,c.total/tg*100));
+    var n2=Math.max(1,dayDiff(S.start,today())+1),left=Math.max(1,S.days-n2+1),need=(tg-c.total)/left,msg;
+    if(c.total>=tg)msg='Target reached. Request the next phase.';
+    else if(need<=0.6)msg='Needs about '+Math.max(need,0).toFixed(2)+'% a day over '+left+' days. Normal pace is enough.';
+    else msg='Needs '+need.toFixed(2)+'% a day over '+left+' days. Do not size up to catch up. Risk stays '+S.risk+'% per trade.';
+    out+='<div class="bar" aria-hidden="true"><i style="width:'+prog.toFixed(1)+'%"></i></div>'+
+      '<div style="display:flex;justify-content:space-between;font-size:13px;gap:8px;flex-wrap:wrap"><span class="mono">'+pct(c.total)+' of +'+tg+'%</span><span class="mono">'+usd(S.acct*c.total/100)+' of '+usd(S.acct*tg/100)+'</span></div>'+
+      '<p class="legend" style="margin-top:8px">'+esc(msg)+'</p>';
+  }else{
+    out+='<p class="legend" style="margin-top:8px">No target on a funded account. The same daily and drawdown stops still apply.</p>';
+  }
+  $('curve').innerHTML=out;
+}
+
+function renderChecks(){
+  var td=today();if(S.checks.day!==td){S.checks={day:td,done:[]}}
+  $('checks').innerHTML=RULES.map(function(r,i){
+    var on=S.checks.done.indexOf(i)>-1;
+    return '<button class="chk" data-ck="'+i+'" aria-pressed="'+on+'"><span class="box">'+(on?'&#10003;':'')+'</span><span class="t">'+esc(r)+'</span></button>';
+  }).join('');
+}
+
+function fillSettings(){
+  $('s-acct').value=S.acct;$('s-risk').value=S.risk;$('s-t1').value=S.t1;$('s-t2').value=S.t2;$('s-phase').value=S.phase;$('s-days').value=S.days;
+  $('s-fd').value=S.firmDaily;$('s-fm').value=S.firmDD;$('s-start').value=S.start;
+}
+function renderSync(){
+  $('sync').textContent=syncMode==='cloud'?'Saved to your account. Your trades follow you across devices.':syncMode==='error'?'Could not reach cloud storage. Changes are kept on this device.':'Saved on this device.';
+}
+function renderAll(){var c=calc();renderStatus(c);renderMeters(c);renderCalc(c);renderList();renderCurve(c);renderChecks();renderSync()}
+
+function save(){
+  S.updated=Date.now();
+  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
+  if(doc){clearTimeout(timer);timer=setTimeout(flush,400)}
+}
+async function flush(){
+  if(!doc)return;if(writing){dirty=true;return}
+  writing=true;
+  try{do{dirty=false;await doc.set(JSON.parse(JSON.stringify(S)))}while(dirty);syncMode='cloud'}catch(e){syncMode='error'}
+  writing=false;renderSync();
+}
+
+function logTrade(r){
+  var err=$('err');err.textContent='';
+  if(typeof r!=='number'||isNaN(r)||r<-10||r>20){err.textContent='Enter a result between -10R and 20R.';return}
+  var c=calc(),size=c.st.size||1,broke=c.st.size===0;
+  S.trades.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),day:today(),pair:S.ins,side:$('side').value,r:r,size:size,pnl:r*S.risk*size,note:$('note').value.trim(),broke:broke});
+  $('note').value='';$('cr').value='';
+  save();renderAll();
+}
+
+document.addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  if(b.dataset.r!==undefined){logTrade(parseFloat(b.dataset.r));return}
+  if(b.id==='logc'){var v=$('cr').value.trim().replace(',','.');logTrade(v===''?NaN:parseFloat(v));return}
+  if(b.dataset.del){S.trades=S.trades.filter(function(t){return t.id!==b.dataset.del});S.phaseFrom=Math.min(S.phaseFrom,S.trades.length);save();renderAll();return}
+  if(b.dataset.next){S.phase=Math.min(3,S.phase+1);S.phaseFrom=S.trades.length;S.start=today();save();fillSettings();renderAll();return}
+  if(b.dataset.ck!==undefined){var i=+b.dataset.ck,k=S.checks.done.indexOf(i);if(k>-1)S.checks.done.splice(k,1);else S.checks.done.push(i);save();renderChecks();return}
+  if(b.id==='reset'){
+    if(b.dataset.armed){S.trades=[];S.phaseFrom=0;S.start=today();b.dataset.armed='';b.textContent='Clear all trades';save();fillSettings();renderAll()}
+    else{b.dataset.armed='1';b.textContent='Tap again to confirm';setTimeout(function(){b.dataset.armed='';b.textContent='Clear all trades'},4000)}
+  }
+});
+function num(id,key,min,max){
+  $(id).addEventListener('change',function(){
+    var v=parseFloat(this.value.replace(',','.'));
+    if(isNaN(v)||v<min||v>max){this.value=S[key];return}
+    S[key]=v;save();renderAll();
+  });
+}
+num('s-acct','acct',100,100000000);num('s-risk','risk',0.05,5);num('s-t1','t1',1,100);num('s-t2','t2',1,100);
+num('s-days','days',1,365);num('s-fd','firmDaily',0.5,20);num('s-fm','firmDD',1,50);
+$('s-start').addEventListener('change',function(){if(this.value){S.start=this.value;save();renderAll()}else{this.value=S.start}});
+$('s-phase').addEventListener('change',function(){S.phase=+this.value;S.phaseFrom=S.trades.length;S.start=today();save();fillSettings();renderAll()});
+$('ins').addEventListener('change',function(){S.ins=this.value;save();fillCalc();renderAll()});
+function specField(id,key){
+  $(id).addEventListener('change',function(){
+    var v=parseFloat(this.value.replace(',','.'));
+    if(isNaN(v)||v<=0){this.value=spec(S.ins)[key];return}
+    var o=S.spec[S.ins]||{};o[key]=v;S.spec[S.ins]=o;save();renderAll();
+  });
+}
+specField('stop','stop');specField('val','v');
+$('cr').addEventListener('keydown',function(e){if(e.key==='Enter')$('logc').click()});
+
+fillSettings();fillCalc();renderAll();
+
+(async function(){
+  try{
+    if(!window.claude||!claude.use)return;
+    var user=await claude.use('user'),db=await claude.use('db');
+    if(!user||!db)return;
+    var id=await user.id();if(!id)return;
+    doc=db.doc('data/users/'+id+'/state');
+    var snap=await doc.get();
+    if(snap.exists){
+      var d=norm(JSON.parse(JSON.stringify(snap.data())));
+      if((d.updated||0)>(S.updated||0)){S=d;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}fillSettings();fillCalc();syncMode='cloud'}
+      else{syncMode='cloud';flush()}
+    }else{syncMode='cloud';if(S.updated)flush()}
+    renderAll();
+  }catch(e){doc=null;syncMode='device';renderSync()}
+})();
+})();
+</script>
+</body>
+</html>
